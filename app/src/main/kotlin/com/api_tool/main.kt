@@ -37,7 +37,7 @@ fun main () {
     when (choice) {
 
         "1" -> {
-            println("Enter book title:")
+            println("Enter book title: ")
             val title = readLine()
             if (title != null) {
                 handleSearchWithOptions(apiService, title, "title")
@@ -45,7 +45,7 @@ fun main () {
         }
 
         "2" -> {
-            println("Enter author name:")
+            println("Enter author name: ")
             val author = readLine()
             if (author != null) {
                 handleSearchWithOptions(apiService, author, "author")
@@ -53,7 +53,7 @@ fun main () {
         }
 
         "3" -> {
-            println("Enter ISBN:")
+            println("Enter ISBN: ")
             // ISBN will be dynamically added to the API endpoint using @Path
             val isbn = readLine()
             if (isbn != null) {
@@ -70,7 +70,7 @@ fun main () {
 }
 
 // global limit value, remember constant global variables are named in all CAPS
-const val DEFAULT_LIMIT = "10"
+const val DEFAULT_LIMIT_STRING = "10"
 
 // handles additional query parameters for certain search types
 fun handleSearchWithOptions(apiService: OpenLibraryAPIService, searchParam: String, searchType: String) {
@@ -91,7 +91,7 @@ fun handleSearchWithOptions(apiService: OpenLibraryAPIService, searchParam: Stri
 fun searchByTitle(apiService: OpenLibraryAPIService, title: String, sort: String?) {
 
     // add default limit value to only return 10 books
-    val call = apiService.searchBooksByTitle(title, sort, limit = DEFAULT_LIMIT)
+    val call = apiService.searchBooksByTitle(title, sort, limit = DEFAULT_LIMIT_STRING)
 
     // execute the API call async with "enqueue"
     call.enqueue(object : Callback<BookSearchResponse> {
@@ -166,7 +166,7 @@ fun searchByTitle(apiService: OpenLibraryAPIService, title: String, sort: String
 // search books by author
 fun searchByAuthor(apiService: OpenLibraryAPIService, author: String, sort: String?) {
 
-    val call = apiService.searchBooksByAuthor(author, sort, limit = DEFAULT_LIMIT)
+    val call = apiService.searchBooksByAuthor(author, sort, limit = DEFAULT_LIMIT_STRING)
 
     call.enqueue(object : Callback<BookSearchResponse> {
 
