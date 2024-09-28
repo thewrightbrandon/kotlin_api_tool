@@ -37,7 +37,7 @@ fun main () {
     when (choice) {
 
         "1" -> {
-            println("Enter book title:")
+            println("Enter book title: ")
             val title = readLine()
             if (title != null) {
                 handleSearchWithOptions(apiService, title, "title")
@@ -45,7 +45,7 @@ fun main () {
         }
 
         "2" -> {
-            println("Enter author name:")
+            println("Enter author name: ")
             val author = readLine()
             if (author != null) {
                 handleSearchWithOptions(apiService, author, "author")
@@ -53,7 +53,7 @@ fun main () {
         }
 
         "3" -> {
-            println("Enter ISBN:")
+            println("Enter ISBN: ")
             // ISBN will be dynamically added to the API endpoint using @Path
             val isbn = readLine()
             if (isbn != null) {
