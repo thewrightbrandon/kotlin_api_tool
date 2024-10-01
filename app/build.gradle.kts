@@ -9,18 +9,14 @@ repositories {
 }
 
 dependencies {
-    // Kotlin Standard Library
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
-    // Retrofit for API integration
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    // Gson converter for Retrofit. convert JSON into Kotlin objects
+    implementation("com.google.code.gson:gson:2.8.9")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-
-    implementation("io.ktor:ktor-client-core:2.0.0")
-    implementation("io.ktor:ktor-client-cio:2.0.0")
-    implementation("io.ktor:ktor-client-json:2.0.0")
-    implementation("io.ktor:ktor-client-logging:2.0.0")
-
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
+    implementation("com.squareup.okio:okio:3.5.0")
+    implementation("com.jakewharton.retrofit:retrofit2-kotlin-coroutines-adapter:0.9.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
 }
 
 // Specify the Java toolchain
