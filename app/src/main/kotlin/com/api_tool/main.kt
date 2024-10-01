@@ -1,22 +1,17 @@
 package com.api_tool
 
 import com.api_tool.models.Book
-import com.api_tool.models.BookByISBN
 
-// kotlin Math library
+// Math library
 import kotlin.math.*
 // HTTP client library
-import retrofit2.Retrofit
+import retrofit2.*
+// async API calls
+import kotlinx.coroutines.*
 // JSON to GSON
 import retrofit2.converter.gson.GsonConverterFactory
-// HTTP call
-import retrofit2.Call
-// handles results (Response) of an async call after an HTTP request completes
-import retrofit2.Callback
-// wrap data in Response object, ability to access parsed body & HTTP transaction details
-import retrofit2.Response
 
-fun main () {
+fun main () = runBlocking {
 
     // Initialize Retrofit with the API baseURL and GSON converter
     val retrofit = Retrofit.Builder()
@@ -30,7 +25,7 @@ fun main () {
     val apiService = retrofit.create(OpenLibraryAPIService::class.java)
 
     // prompt user for which search criteria they'd like t use
-    println("Search by: 1) Title 2) Author 3) ISBN")
+    println("Search by number: 1) Title 2) Author 3) ISBN")
     val choice = readLine()
 
     // when() handles like a switch statement with more flexibility
@@ -73,7 +68,7 @@ fun main () {
 const val DEFAULT_LIMIT_STRING = "10"
 
 // handles additional query parameters for certain search types
-fun handleSearchWithOptions(apiService: OpenLibraryAPIService, searchParam: String, searchType: String) {
+suspend fun handleSearchWithOptions(apiService: OpenLibraryAPIService, searchParam: String, searchType: String) {
 
     println("Enter sort option (optional): new, old, rating, random")
     val sort = readLine()
@@ -88,189 +83,159 @@ fun handleSearchWithOptions(apiService: OpenLibraryAPIService, searchParam: Stri
 }
 
 // search by book title
-fun searchByTitle(apiService: OpenLibraryAPIService, title: String, sort: String?) {
+suspend fun searchByTitle(apiService: OpenLibraryAPIService, title: String, sort: String?) {
+    //try-catch blocks will handle any errors during the API call
+    try {
+        // execute API call in coroutine context
+        val searchResult = apiService.searchBooksByTitle(title, sort, limit = DEFAULT_LIMIT_STRING)
 
-    // add default limit value to only return 10 books
-    val call = apiService.searchBooksByTitle(title, sort, limit = DEFAULT_LIMIT_STRING)
+        if (searchResult.docs.isNotEmpty()) {
 
-    // execute the API call async with "enqueue"
-    call.enqueue(object : Callback<BookSearchResponse> {
+            searchResult.docs.forEach { book ->
 
-        // triggered on successful response
-        // override is needed when changing method or property from interface
-        override fun onResponse(call: Call<BookSearchResponse>, response: Response<BookSearchResponse>) {
+                val roundedRating = roundAverageRating(book)
 
-            // checks for a 2xx status code
-            if (response.isSuccessful) {
-
-                val searchResult = response.body()
-
-                if (searchResult != null && searchResult.docs.isNotEmpty()) {
-
-                    // Print the number of books found
-                    println("Books found: ${searchResult.numFound}")
-
-                    // Loop through the books and print their details
-                    searchResult.docs.forEach { book ->
-
-                        val roundedRating = roundAverageRating(book)
-
-                        if (roundedRating != 0.0) {
-
-                            println(
-                                "Title: ${book.title}, " +
-                                "Author: ${book.author_name?.joinToString() ?: "Author unknown."}, " +
-                                "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}, " +
-                                "Average Page Count: ${book.number_of_pages_median ?: "Average Page Count not available."}, " +
-                                "Average Rating: $roundedRating"
-                            )
-
-                        } else {
-
-                            println(
-                                "Title: ${book.title}, " +
-                                "Author: ${book.author_name?.joinToString() ?: "Author unknown."}, " +
-                                "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}, " +
-                                "Average Page Count: ${book.number_of_pages_median ?: "Average Page Count not available."}"
-                            )
-
-                        }
-
-                    }
-
-                } else {
-
-                    println("There is no book in our Library by that title.")
-
-                }
-
-            } else {
-
-                // code() returns HTTP status code
-                println("API call failed with status code: ${response.code()}")
-
-            }
-        }
-
-        // triggered on failed response
-        override fun onFailure(call: Call<BookSearchResponse>, t: Throwable) {
-
-            println("Error: ${t.message}")
-
-        }
-
-    })
-
-}
-
-// search books by author
-fun searchByAuthor(apiService: OpenLibraryAPIService, author: String, sort: String?) {
-
-    val call = apiService.searchBooksByAuthor(author, sort, limit = DEFAULT_LIMIT_STRING)
-
-    call.enqueue(object : Callback<BookSearchResponse> {
-
-        override fun onResponse(call: Call<BookSearchResponse>, response: Response<BookSearchResponse>) {
-
-            if (response.isSuccessful) {
-
-                val searchResult = response.body()
-
-                if (searchResult != null && searchResult.docs.isNotEmpty()) {
-
-                    println("Books found: ${searchResult.numFound}")
-
-                    searchResult.docs.forEach { book ->
-
-                        val roundedRating = roundAverageRating(book)
-
-                        if (roundedRating != 0.0) {
-
-                            println(
-                                "Title: ${book.title}, " +
-                                "Author: ${book.author_name?.joinToString() ?: "Author unknown."}, " +
-                                "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}, " +
-                                "Average Page Count: ${book.number_of_pages_median ?: "Average Page Count not available."}, " +
-                                "Average Rating: $roundedRating"
-                            )
-
-                        } else {
-
-                            println(
-                                "Title: ${book.title}, " +
-                                "Author: ${book.author_name?.joinToString() ?: "Author unknown."}, " +
-                                "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}, " +
-                                "Average Page Count: ${book.number_of_pages_median ?: "Average Page Count not available."}"
-                            )
-
-                        }
-
-                    }
-
-                } else {
-
-                    println("No books found by author: $author")
-
-                }
-
-            }
-        }
-
-        override fun onFailure(call: Call<BookSearchResponse>, t: Throwable) {
-
-            println("Error: ${t.message}")
-
-        }
-
-    })
-
-}
-
-// search for specific book using ISBN
-fun searchByISBN(apiService: OpenLibraryAPIService, isbn: String) {
-
-    val call = apiService.searchBookByISBN(isbn)
-
-    call.enqueue(object : Callback<BookByISBN> {
-
-        override fun onResponse(call: Call<BookByISBN>, response: Response<BookByISBN>) {
-
-            if (response.isSuccessful) {
-
-                val book = response.body()
-
-                if (book != null) {
+                if (roundedRating != 0.0) {
 
                     println(
                         "Title: ${book.title}, " +
                         "Author: ${book.author_name?.joinToString() ?: "Author unknown."}, " +
-                        "Publish Year: ${book.publish_date ?: "Publish Year not available."}, " +
-                        "Average Page Count: ${book.number_of_pages_median ?: "Average Page Count not available."}"
+                        "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}, " +
+                        "Average Rating: $roundedRating"
                     )
 
                 } else {
 
-                    println("No book found for ISBN: $isbn")
+                    println(
+                        "Title: ${book.title}, " +
+                        "Author: ${book.author_name?.joinToString() ?: "Author unknown."}, " +
+                        "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}, "
+                    )
 
                 }
 
             }
 
-        }
+        } else {
 
-        override fun onFailure(call: Call<BookByISBN>, t: Throwable) {
-
-            println("Error: ${t.message}")
+            println("There is no book in our Library by that title.")
 
         }
 
-    })
+    } catch (e: Exception) {
+
+        println("Error: ${e.message}")
+
+    }
 
 }
 
+// search books by author
+suspend fun searchByAuthor(apiService: OpenLibraryAPIService, author: String, sort: String?) {
+
+    try {
+
+        val searchResult = apiService.searchBooksByAuthor(author, sort, limit = DEFAULT_LIMIT_STRING)
+
+        if (searchResult.docs.isNotEmpty()) {
+
+            println("Books found: ${searchResult.numFound}")
+
+            searchResult.docs.forEach { book ->
+
+                val roundedRating = roundAverageRating(book)
+
+                if (roundedRating != 0.0) {
+
+                    println(
+                        "Title: ${book.title}, " +
+                        "Author: ${book.author_name?.joinToString() ?: "Author unknown."}, " +
+                        "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}, " +
+                        "Average Rating: $roundedRating"
+                    )
+
+                } else {
+
+                    println(
+                        "Title: ${book.title}, " +
+                        "Author: ${book.author_name?.joinToString() ?: "Author unknown."}, " +
+                        "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}, "
+                    )
+
+                }
+
+            }
+
+        } else {
+
+            println("No books found by author: $author")
+
+        }
+
+    } catch (e: Exception) {
+        println("Error: ${e.message}")
+    }
+}
+
+// search for specific book using ISBN
+suspend fun searchByISBN(apiService: OpenLibraryAPIService, isbn: String) {
+
+    try {
+
+        val book = apiService.searchBookByISBN(isbn)
+
+        // author_name is not returned when searching book by ISBN
+        // instead we need to get author details from a separate API request
+        val authors = book.authors
+
+        if (book.title == null) {
+
+            println("No book found for ISBN: $isbn")
+            // do not continue if there is no book title returned
+            return
+        }
+
+        if (authors.isNullOrEmpty()) {
+
+            println(
+                "Title: ${book.title}, " +
+                "Author: Author unknown., " +
+                "Publish Year: ${book.publish_date ?: "Publish Year not available."}, "
+            )
+            // do not continue if there is no list of authors returned
+            return
+        }
+
+        // authors is a list of objects, get the key within the first object
+        val authorKeys = authors.map { it.key }
+        val authorKey = authorKeys[0].substringAfterLast("/")
+        // define AuthorDetails interface to handle author endpoint data
+        val authorDetails = apiService.getAuthorDetails(authorKey)
+
+        println(
+            "Title: ${book.title}, " +
+            "Author: ${authorDetails.personal_name}, " +
+            "Publish Year: ${book.publish_date ?: "Publish Year not available."}, "
+        )
+
+    } catch (e: Exception) {
+
+        println("Error: ${e.message}")
+
+    }
+
+}
+
+/**
+ * rounds the average rating of the book to two decimal places
+ * we are checking if the rating is null in the service
+ *
+ * @param book - the book object containing the ratings_average
+ * @return the rounded average rating
+ */
 fun roundAverageRating(book: Book): Double {
 
-    val bookRating = floor(book.ratings_average * 100) / 100
+    val bookRating = round(book.ratings_average * 100) / 100
     return bookRating
 
 }
