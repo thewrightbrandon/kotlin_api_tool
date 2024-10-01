@@ -209,6 +209,7 @@ suspend fun searchByISBN(apiService: OpenLibraryAPIService, isbn: String) {
         // authors is a list of objects, get the key within the first object
         val authorKeys = authors.map { it.key }
         val authorKey = authorKeys[0].substringAfterLast("/")
+
         // define AuthorDetails interface to handle author endpoint data
         val authorDetails = apiService.getAuthorDetails(authorKey)
 
