@@ -12,7 +12,7 @@ API integration tool to assist me in learning the fundamentals of Kotlin.
 - Added a limit to how many results are returned to the user
 - Added coroutines to allow for asynchronicity when making requests
 - Manipulated the response data from the ISBN book search which was used in a subsequent request to fetch Author Details
-- Added AI component (Google Gemini) that will return book or author suggestions based on Book Title or Author search
+- Added AI component (Google Gemini) that will return book suggestions based on book title or author search
 
 ### Pain Points
 
@@ -22,3 +22,5 @@ API integration tool to assist me in learning the fundamentals of Kotlin.
 ### Stretch Goals
 
 - Post process Gemini AI response so the last line of response is removed due to max tokens reached
+- Add conditional in the recommendations function that adjusts AI prompt text depending on user search query, recommend other books for book title search, recommend authors for author search
+- Combine Book with Book data classes and Author with Author data classes to clean up file structure
