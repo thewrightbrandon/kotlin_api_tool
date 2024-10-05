@@ -3,11 +3,13 @@ package com.api_tool
 import com.api_tool.models.BookByISBN
 import com.api_tool.models.AuthorDetails
 
-// makes retrofit aware of the HTTP call being made, appended to baseURL
+import com.api_tool.models.GeminiRequest
+import com.api_tool.models.GeminiResponse
+
 import retrofit2.http.GET
-// appends query parameters to the URL, in this case we are adding ?title=
+import retrofit2.http.POST
+import retrofit2.http.Body
 import retrofit2.http.Query
-// pass value dynamically into URL
 import retrofit2.http.Path
 
 // define how retrofit interacts with the OL API
@@ -39,5 +41,14 @@ interface OpenLibraryAPIService {
     suspend fun getAuthorDetails(
         @Path("authorKey") authorKey: String?
     ): AuthorDetails
+
+}
+
+interface GoogleGeminiAPIService {
+
+    @POST("/v1beta/models/gemini-1.5-flash:generateText")
+    suspend fun getRecommendations(
+        @Body request: GeminiRequest
+    ): GeminiResponse
 
 }

@@ -17,3 +17,7 @@ API integration tool to assist me in learning the fundamentals of Kotlin.
 
 - Fully understanding how the API interface and data classes work together
 - How to work with null values and how  to protect runtime from those values, especially in the context of API responses
+
+### Stretch Goals
+
+- Add AI component that will return book or author suggestions based on search
