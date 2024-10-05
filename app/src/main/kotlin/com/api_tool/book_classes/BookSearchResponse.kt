@@ -1,4 +1,4 @@
-import com.api_tool.models.Book
+import com.api_tool.book_classes.Book
 
 data class BookSearchResponse(
     val numFound: Int,

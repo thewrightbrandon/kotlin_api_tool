@@ -1,10 +1,10 @@
 package com.api_tool
 
-import com.api_tool.models.BookByISBN
-import com.api_tool.models.AuthorDetails
+import com.api_tool.book_classes.BookByISBN
+import com.api_tool.book_classes.AuthorDetails
 
-import com.api_tool.models.GeminiRequest
-import com.api_tool.models.GeminiResponse
+import com.api_tool.gemini_classes.GeminiRequest
+import com.api_tool.gemini_classes.GeminiResponse
 
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -46,8 +46,9 @@ interface OpenLibraryAPIService {
 
 interface GoogleGeminiAPIService {
 
-    @POST("/v1beta/models/gemini-1.5-flash:generateText")
+    @POST("/v1beta/models/gemini-1.5-flash:generateContent")
     suspend fun getRecommendations(
+        @Query("key") key: String?,
         @Body request: GeminiRequest
     ): GeminiResponse
 

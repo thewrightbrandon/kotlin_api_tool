@@ -1,4 +1,4 @@
-package com.api_tool.models
+package com.api_tool.book_classes
 
 data class Book(
     val title: String?,

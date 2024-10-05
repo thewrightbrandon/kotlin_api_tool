@@ -1,10 +1,10 @@
 package com.api_tool
 
-import com.api_tool.models.Book
+import com.api_tool.book_classes.Book
+import com.api_tool.gemini_classes.*
+
+// env variables
 import io.github.cdimascio.dotenv.dotenv
-
-import okhttp3.OkHttpClient
-
 // Math library
 import kotlin.math.*
 // HTTP client library
@@ -14,24 +14,10 @@ import kotlinx.coroutines.*
 // JSON to GSON
 import retrofit2.converter.gson.GsonConverterFactory
 
+// global limit value, remember constant global variables are named in all CAPS
+const val DEFAULT_LIMIT_STRING = "10"
+
 fun main () = runBlocking {
-
-    // use environment variable to hide api key
-    val dotenv = dotenv()
-    val googleAPIKey = dotenv["GOOGLE_APPLICATION_API_KEY"]
-    // println("Gemini AI API key: $googleAPIKey")
-
-    val dynamicHeaders = OkHttpClient.Builder()
-        .addInterceptor(AuthorityInterceptor(googleAPIKey))
-        .build()
-
-    val retrofitGemini = Retrofit.Builder()
-        .baseUrl("https://generativelanguage.googleapis.com/")
-        .client(dynamicHeaders)
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
-
-    val googleGeminiService = retrofitGemini.create(GoogleGeminiAPIService::class.java)
 
     // Initialize Retrofit with the API baseURL and GSON converter
     val retrofitOpenLibrary = Retrofit.Builder()
@@ -84,9 +70,6 @@ fun main () = runBlocking {
 
 }
 
-// global limit value, remember constant global variables are named in all CAPS
-const val DEFAULT_LIMIT_STRING = "10"
-
 // handles additional query parameters for certain search types
 suspend fun handleSearchWithOptions(openLibraryService: OpenLibraryAPIService, searchParam: String, searchType: String) {
 
@@ -135,6 +118,9 @@ suspend fun searchByTitle(openLibraryService: OpenLibraryAPIService, title: Stri
                 }
 
             }
+
+            // Call for recommendations based on the title searched
+            getRecommendations(title)
 
         } else {
 
@@ -185,6 +171,9 @@ suspend fun searchByAuthor(openLibraryService: OpenLibraryAPIService, author: St
                 }
 
             }
+
+            // Call for recommendations based on the author searched
+            getRecommendations(author)
 
         } else {
 
@@ -241,6 +230,49 @@ suspend fun searchByISBN(openLibraryService: OpenLibraryAPIService, isbn: String
 
     } catch (e: Exception) {
 
+        println("Error: ${e.message}")
+
+    }
+
+}
+
+suspend fun getRecommendations(userSearch: String) {
+
+    val dotenv = dotenv()
+    val googleAPIKey = dotenv["GOOGLE_APPLICATION_API_KEY"]
+
+    val retrofitGemini = Retrofit.Builder()
+        .baseUrl("https://generativelanguage.googleapis.com/")
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
+    val googleGeminiService = retrofitGemini.create(GoogleGeminiAPIService::class.java)
+
+    val request = GeminiRequest(
+        contents = listOf(
+            Content(parts = listOf(Part(text = "Recommend books or authors based on a user searching for: $userSearch")))
+        ),
+        generationConfig = GenerationConfig(
+            temperature = 0.8,
+            maxOutputTokens = 300
+        )
+    )
+
+    try {
+
+        // Call the Gemini API
+        val response = googleGeminiService.getRecommendations(googleAPIKey, request)
+
+        val recommendations = response.candidates
+            .flatMap { it.content.parts }
+            .firstOrNull()
+            ?.text ?: "No recommendation found."
+
+        println("If you like $userSearch $recommendations")
+
+    } catch (e: Exception) {
+
+        e.printStackTrace()
         println("Error: ${e.message}")
 
     }
