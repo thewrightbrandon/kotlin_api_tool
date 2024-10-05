@@ -1,7 +1,10 @@
 package com.api_tool
 
-import com.api_tool.models.Book
+import com.api_tool.book_classes.Book
+import com.api_tool.gemini_classes.*
 
+// env variables
+import io.github.cdimascio.dotenv.dotenv
 // Math library
 import kotlin.math.*
 // HTTP client library
@@ -11,10 +14,13 @@ import kotlinx.coroutines.*
 // JSON to GSON
 import retrofit2.converter.gson.GsonConverterFactory
 
+// global limit value, remember constant global variables are named in all CAPS
+const val DEFAULT_LIMIT_STRING = "10"
+
 fun main () = runBlocking {
 
     // Initialize Retrofit with the API baseURL and GSON converter
-    val retrofit = Retrofit.Builder()
+    val retrofitOpenLibrary = Retrofit.Builder()
         // Base URL for the API
         .baseUrl("https://openlibrary.org/")
         // GSON conversion
@@ -22,9 +28,9 @@ fun main () = runBlocking {
         .build()
 
     // instance of the OpenLibraryAPIService
-    val apiService = retrofit.create(OpenLibraryAPIService::class.java)
+    val openLibraryService = retrofitOpenLibrary.create(OpenLibraryAPIService::class.java)
 
-    // prompt user for which search criteria they'd like t use
+    // prompt user for which search criteria they'd like to use
     println("Search by number: 1) Title 2) Author 3) ISBN")
     val choice = readLine()
 
@@ -35,7 +41,7 @@ fun main () = runBlocking {
             println("Enter book title: ")
             val title = readLine()
             if (title != null) {
-                handleSearchWithOptions(apiService, title, "title")
+                handleSearchWithOptions(openLibraryService, title, "title")
             }
         }
 
@@ -43,7 +49,7 @@ fun main () = runBlocking {
             println("Enter author name: ")
             val author = readLine()
             if (author != null) {
-                handleSearchWithOptions(apiService, author, "author")
+                handleSearchWithOptions(openLibraryService, author, "author")
             }
         }
 
@@ -52,7 +58,7 @@ fun main () = runBlocking {
             // ISBN will be dynamically added to the API endpoint using @Path
             val isbn = readLine()
             if (isbn != null) {
-                searchByISBN(apiService, isbn)
+                searchByISBN(openLibraryService, isbn)
             }
         }
 
@@ -64,30 +70,27 @@ fun main () = runBlocking {
 
 }
 
-// global limit value, remember constant global variables are named in all CAPS
-const val DEFAULT_LIMIT_STRING = "10"
-
 // handles additional query parameters for certain search types
-suspend fun handleSearchWithOptions(apiService: OpenLibraryAPIService, searchParam: String, searchType: String) {
+suspend fun handleSearchWithOptions(openLibraryService: OpenLibraryAPIService, searchParam: String, searchType: String) {
 
     println("Enter sort option (optional): new, old, rating, random")
     val sort = readLine()
 
     when (searchType) {
 
-        "title" -> searchByTitle(apiService, searchParam, sort)
-        "author" -> searchByAuthor(apiService, searchParam, sort)
+        "title" -> searchByTitle(openLibraryService, searchParam, sort)
+        "author" -> searchByAuthor(openLibraryService, searchParam, sort)
 
     }
 
 }
 
 // search by book title
-suspend fun searchByTitle(apiService: OpenLibraryAPIService, title: String, sort: String?) {
+suspend fun searchByTitle(openLibraryService: OpenLibraryAPIService, title: String, sort: String?) {
     //try-catch blocks will handle any errors during the API call
     try {
         // execute API call in coroutine context
-        val searchResult = apiService.searchBooksByTitle(title, sort, limit = DEFAULT_LIMIT_STRING)
+        val searchResult = openLibraryService.searchBooksByTitle(title, sort, limit = DEFAULT_LIMIT_STRING)
 
         if (searchResult.docs.isNotEmpty()) {
 
@@ -116,6 +119,9 @@ suspend fun searchByTitle(apiService: OpenLibraryAPIService, title: String, sort
 
             }
 
+            // Call for recommendations based on the title searched
+            getRecommendations(title)
+
         } else {
 
             println("There is no book in our Library by that title.")
@@ -131,11 +137,11 @@ suspend fun searchByTitle(apiService: OpenLibraryAPIService, title: String, sort
 }
 
 // search books by author
-suspend fun searchByAuthor(apiService: OpenLibraryAPIService, author: String, sort: String?) {
+suspend fun searchByAuthor(openLibraryService: OpenLibraryAPIService, author: String, sort: String?) {
 
     try {
 
-        val searchResult = apiService.searchBooksByAuthor(author, sort, limit = DEFAULT_LIMIT_STRING)
+        val searchResult = openLibraryService.searchBooksByAuthor(author, sort, limit = DEFAULT_LIMIT_STRING)
 
         if (searchResult.docs.isNotEmpty()) {
 
@@ -166,6 +172,9 @@ suspend fun searchByAuthor(apiService: OpenLibraryAPIService, author: String, so
 
             }
 
+            // Call for recommendations based on the author searched
+            getRecommendations(author)
+
         } else {
 
             println("No books found by author: $author")
@@ -178,11 +187,11 @@ suspend fun searchByAuthor(apiService: OpenLibraryAPIService, author: String, so
 }
 
 // search for specific book using ISBN
-suspend fun searchByISBN(apiService: OpenLibraryAPIService, isbn: String) {
+suspend fun searchByISBN(openLibraryService: OpenLibraryAPIService, isbn: String) {
 
     try {
 
-        val book = apiService.searchBookByISBN(isbn)
+        val book = openLibraryService.searchBookByISBN(isbn)
 
         // author_name is not returned when searching book by ISBN
         // instead we need to get author details from a separate API request
@@ -211,7 +220,7 @@ suspend fun searchByISBN(apiService: OpenLibraryAPIService, isbn: String) {
         val authorKey = authorKeys[0].substringAfterLast("/")
 
         // define AuthorDetails interface to handle author endpoint data
-        val authorDetails = apiService.getAuthorDetails(authorKey)
+        val authorDetails = openLibraryService.getAuthorDetails(authorKey)
 
         println(
             "Title: ${book.title}, " +
@@ -221,6 +230,49 @@ suspend fun searchByISBN(apiService: OpenLibraryAPIService, isbn: String) {
 
     } catch (e: Exception) {
 
+        println("Error: ${e.message}")
+
+    }
+
+}
+
+suspend fun getRecommendations(userSearch: String) {
+
+    val dotenv = dotenv()
+    val googleAPIKey = dotenv["GOOGLE_APPLICATION_API_KEY"]
+
+    val retrofitGemini = Retrofit.Builder()
+        .baseUrl("https://generativelanguage.googleapis.com/")
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
+    val googleGeminiService = retrofitGemini.create(GoogleGeminiAPIService::class.java)
+
+    val request = GeminiRequest(
+        contents = listOf(
+            Content(parts = listOf(Part(text = "Recommend books or authors based on a user searching for: $userSearch")))
+        ),
+        generationConfig = GenerationConfig(
+            temperature = 0.8,
+            maxOutputTokens = 300
+        )
+    )
+
+    try {
+
+        // Call the Gemini API
+        val response = googleGeminiService.getRecommendations(googleAPIKey, request)
+
+        val recommendations = response.candidates
+            .flatMap { it.content.parts }
+            .firstOrNull()
+            ?.text ?: "No recommendation found."
+
+        println("If you like $userSearch $recommendations")
+
+    } catch (e: Exception) {
+
+        e.printStackTrace()
         println("Error: ${e.message}")
 
     }
