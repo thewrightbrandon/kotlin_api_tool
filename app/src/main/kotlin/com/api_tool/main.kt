@@ -31,7 +31,7 @@ fun main () = runBlocking {
     val openLibraryService = retrofitOpenLibrary.create(OpenLibraryAPIService::class.java)
 
     // prompt user for which search criteria they'd like to use
-    println("Search by number: 1) Title 2) Author 3) ISBN")
+    println("Input number of desired search parameter: 1) Title 2) Author 3) ISBN")
     val choice = readLine()
 
     // when() handles like a switch statement with more flexibility
@@ -54,7 +54,7 @@ fun main () = runBlocking {
         }
 
         "3" -> {
-            println("Enter ISBN: ")
+            println("Enter book ISBN 13 from Open Library: ")
             // ISBN will be dynamically added to the API endpoint using @Path
             val isbn = readLine()
             if (isbn != null) {
@@ -73,8 +73,9 @@ fun main () = runBlocking {
 // handles additional query parameters for certain search types
 suspend fun handleSearchWithOptions(openLibraryService: OpenLibraryAPIService, searchParam: String, searchType: String) {
 
-    println("Enter sort option (optional): new, old, rating, random")
+    println("Enter one of the following sort options (optional): new, old, rating, random")
     val sort = readLine()
+    println()
 
     when (searchType) {
 
@@ -106,14 +107,16 @@ suspend fun searchByTitle(openLibraryService: OpenLibraryAPIService, title: Stri
                         "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}, " +
                         "Average Rating: $roundedRating"
                     )
+                    println()
 
                 } else {
 
                     println(
                         "Title: ${book.title}, " +
                         "Author: ${book.author_name?.joinToString() ?: "Author unknown."}, " +
-                        "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}, "
+                        "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}"
                     )
+                    println()
 
                 }
 
@@ -159,14 +162,16 @@ suspend fun searchByAuthor(openLibraryService: OpenLibraryAPIService, author: St
                         "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}, " +
                         "Average Rating: $roundedRating"
                     )
+                    println()
 
                 } else {
 
                     println(
                         "Title: ${book.title}, " +
                         "Author: ${book.author_name?.joinToString() ?: "Author unknown."}, " +
-                        "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}, "
+                        "Publish Year: ${book.first_publish_year ?: "Publish Year not available."}"
                     )
+                    println()
 
                 }
 
@@ -209,10 +214,13 @@ suspend fun searchByISBN(openLibraryService: OpenLibraryAPIService, isbn: String
             println(
                 "Title: ${book.title}, " +
                 "Author: Author unknown., " +
-                "Publish Year: ${book.publish_date ?: "Publish Year not available."}, "
+                "Publish Year: ${book.publish_date ?: "Publish Year not available."}"
             )
+            println()
+
             // do not continue if there is no list of authors returned
             return
+
         }
 
         // authors is a list of objects, get the key within the first object
@@ -225,8 +233,9 @@ suspend fun searchByISBN(openLibraryService: OpenLibraryAPIService, isbn: String
         println(
             "Title: ${book.title}, " +
             "Author: ${authorDetails.personal_name}, " +
-            "Publish Year: ${book.publish_date ?: "Publish Year not available."}, "
+            "Publish Year: ${book.publish_date ?: "Publish Year not available."}"
         )
+        println()
 
     } catch (e: Exception) {
 
@@ -250,7 +259,7 @@ suspend fun getRecommendations(userSearch: String) {
 
     val request = GeminiRequest(
         contents = listOf(
-            Content(parts = listOf(Part(text = "Recommend books or authors based on a user searching for: $userSearch")))
+            Content(parts = listOf(Part(text = "Recommend books or authors similar to: $userSearch")))
         ),
         generationConfig = GenerationConfig(
             temperature = 0.8,
@@ -268,7 +277,9 @@ suspend fun getRecommendations(userSearch: String) {
             .firstOrNull()
             ?.text ?: "No recommendation found."
 
-        println("If you like $userSearch $recommendations")
+        println("Here are some suggestions based on $userSearch")
+        println()
+        println(recommendations)
 
     } catch (e: Exception) {
 
